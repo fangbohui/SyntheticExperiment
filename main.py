@@ -143,8 +143,6 @@ def train(tr_X, tr_Y, te_X, te_Y):
     train_Y = np.asarray(tr_Y).reshape(train_size, 1)
     test_X = np.asarray(te_X).reshape(test_size, dimension)
     test_Y = np.asarray(te_Y).reshape(test_size, 1)
-    print(train_Y)
-    return
 
     X = tf.placeholder("float64", [None, dimension])
     Y = tf.placeholder("float64", [None, 1])
