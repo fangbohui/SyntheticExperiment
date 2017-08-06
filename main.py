@@ -6,9 +6,13 @@ import random
 rng = np.random
 
 
-train_size = 1000
-test_size = 100
-dimension = 30
+train_size = 10000
+test_size = 1000
+dimension = 6
+#field_number = 5
+#field = np.array([2, 4, 5, 7, 12])
+field_number = 3
+field = np.array([2, 2, 2])
 
 
 def make_parameters():
@@ -17,37 +21,42 @@ def make_parameters():
     # means the random_bound
     file_parameter.write("Bound-dimension = %d\n" % dimension)
     for i in range(dimension):
-        file_parameter.write("%.2f\n" % random.random())
+        #file_parameter.write("%.2f\n" % random.random())
+        file_parameter.write("%.6f\n" % (((random.random())) * 10000))
     # generate the W
     # Wi * Xi
     file_parameter.write("W-dimension = %d\n" % dimension)
     for i in range(dimension):
-        file_parameter.write("%.2f\n" % (random.random() / 3))
+        file_parameter.write("%.6f\n" % (((random.random())) * 10000))
     # generate the V
     # Vij * Xi * Xj
     file_parameter.write("V-dimension = %d\n" % dimension)
     for i in range(dimension):
         for j in range(dimension):
-            if i == j:
-                file_parameter.write("0.00\n")
+            if (i == 1 and j == 3):
+                file_parameter.write("%.6f\n" % (((random.random() - 0.5)) * 10000))
+            elif (i == 1 and j == 5):
+                file_parameter.write("%.6f\n" % (((random.random() - 0.5)) * 10000))
+            elif (i == 3 and j == 5):
+                file_parameter.write("%.6f\n" % (((random.random() - 0.5)) * 10000))
             else:
-                file_parameter.write("%.6f\n" % (((random.random() - 0.5)) / 100))
+                file_parameter.write("0.00\n")
     file_parameter.close()
 
 
 def sampling():
     # read the initial parameters and distributions
     file_parameter = open("parameter.txt", 'r', buffering = -1)
-    train_X = np.zeros(train_size * dimension, dtype = float).reshape(train_size, dimension)
-    train_Y = np.zeros(train_size, dtype = float)
-    test_X = np.zeros(test_size * dimension, dtype = float).reshape(test_size, dimension)
-    test_Y = np.zeros(test_size, dtype = float)
+    train_X = np.zeros([train_size, dimension])
+    train_Y = np.zeros(train_size)
+    test_X = np.zeros([test_size, dimension])
+    test_Y = np.zeros(test_size)
     prob = np.arange(dimension, dtype = float)
     W = np.zeros(dimension, dtype = float)
-    V = np.zeros(dimension * dimension, dtype = float).reshape(dimension, dimension)
+    V = np.zeros([dimension, dimension], dtype = float)
     file_parameter.readline()
     for i in range(dimension):
-        s = file_parameter.readline().replace('\n', '')
+        s = file_parameter.readline().strip()
         prob[i] = float(s)
     file_parameter.readline()
     for i in range(dimension):
@@ -57,20 +66,15 @@ def sampling():
         for j in range(dimension):
             V[i][j] = float(file_parameter.readline())
     file_parameter.close()
-    print("readin all the parameters")
+    print("reading all the parameters")
     # sampling
-    field_number = 5
-    field = np.array([2, 4, 5, 7, 12])
     cnt = 0
     for i in range(field.size):
-        sum = 0.0
-        for j in range(field[i]):
-            sum += prob[cnt + j]
-        for j in range(field[i]):
-            prob[cnt + j] /= sum
+        sum = prob[cnt:cnt+field[i]].sum()
+        prob[cnt:cnt+field[i]] /= sum
         cnt += field[i]
 
-    '''
+
     # print the sampling probabilities
     cnt = 0
     for i in range(field_number):
@@ -78,65 +82,41 @@ def sampling():
             print(prob[cnt + j], end = ' ')
         cnt += field[i]
         print("")
-    '''
 
-    print("begin to calc all the train_X[i]")
-    for instance in range(train_size):
-        cnt = 0
-        for i in range(field_number):
-            p = np.zeros(field[i], dtype = float)
-            for j in range(field[i]):
-                p[j] = prob[cnt + j]
-            sample = np.random.choice(field[i], 1, p = p)
-            train_X[instance][cnt + sample[0]] = 1
-            cnt += field[i]
-        if (instance % 100 == 0):
-            print("calculated %d train_X[i]" % instance)
 
-    print("begin to calc all the test_X[i]")
-    for instance in range(test_size):
-        cnt = 0
-        for i in range(field_number):
-            p = np.zeros(field[i], dtype = float)
-            for j in range(field[i]):
-                p[j] = prob[cnt + j]
-            sample = np.random.choice(field[i], 1, p = p)
-            test_X[instance][cnt + sample[0]] = 1
-            cnt += field[i]
-        if (instance % 100 == 0):
-            print("calculated %d test_X[i]" % instance)
+    cnt = 0
+    print("begin to calc all the train_X[i], test_X[i]")
+    for i in range(field_number):
+        p = prob[cnt:cnt+field[i]]
+        sample = np.random.choice(field[i], train_size, p = p)
+        # train_X[:, sample + cnt] = 1
+        for j in range(train_size):
+            train_X[j][cnt + sample[j]] = 1
+        sample = np.random.choice(field[i], test_size, p = p)
+        # test_X[:, sample + cnt] = 1
+        for j in range(test_size):
+            test_X[j][cnt + sample[j]] = 1
+        cnt += field[i]
 
-    print("begin to calculate all the train_Y[i]")
-    for i in range(train_size):
-        result = 0.0
-        for j in range(dimension):
-            result += train_X[i][j] * W[j]
-        for j in range(dimension):
-            for k in range(dimension):
-                result += train_X[i][j] * train_X[i][k] * V[j][k]
-        train_Y[i] = float(result)
-        if i % 100 == 0:
-            print("calculated %d train_Y[i]" % i)
+    # y = sum_1^n w_i x_i + sum_1^n(sum_1^n vij * xi * xj)
+    # batch * dim * 1
+    p = np.expand_dims(train_X, 2)
+    # batch * 1 * dim
+    q = np.expand_dims(train_X, 1)
+    # batch * 1
+    train_Y = train_X.dot(W) + (p * q).reshape([-1, dimension**2]).dot(V.flatten())
 
-    print("begin to calculate all the test_Y[i]")
-    for i in range(test_size):
-        result = 0.0
-        for j in range(dimension):
-            result += train_X[i][j] * W[j]
-        for j in range(dimension):
-            for k in range(dimension):
-                result += test_X[i][j] * test_X[i][k] * V[j][k]
-        test_Y[i] = float(result)
-        # mx = max(mx, train_Y[i])
-        if i % 100 == 0:
-            print("calculated %d test_Y[i]" % i)
+    p = np.expand_dims(test_X, 2)
+    q = np.expand_dims(test_X, 1)
+    test_Y = test_X.dot(W) + (p * q).reshape([-1, dimension**2]).dot(V.flatten())
+
     return train_X, train_Y, test_X, test_Y
 
 
 def train(tr_X, tr_Y, te_X, te_Y):
-    learning_rate = 0.01
+    learning_rate = 3
     training_epochs = 10000
-    batch_size = 10
+    batch_size = 1
     display_step = 1
 
     train_X = np.asarray(tr_X).reshape(train_size, dimension)
@@ -147,12 +127,20 @@ def train(tr_X, tr_Y, te_X, te_Y):
     X = tf.placeholder("float64", [None, dimension])
     Y = tf.placeholder("float64", [None, 1])
 
-    W_o = tf.Variable(tf.random_uniform(shape = [dimension, 1], minval = -0.1, maxval = 0.1, dtype = tf.float64), name = "W_o")
+    W_h1 = tf.Variable(tf.random_uniform(shape = [dimension, dimension], minval = -0.1, maxval = 0.1, dtype = tf.float64), name = "W_h1")
+    Bias_h1 = tf.Variable(tf.zeros(shape = [dimension], dtype = tf.float64), name = "Bias_h1")
+    W_h2 = tf.Variable(tf.random_uniform(shape = [dimension, dimension], minval = -0.1, maxval = 0.1, dtype = tf.float64), name = "W_h2")
+    Bias_h2 = tf.Variable(tf.zeros(shape = [dimension], dtype = tf.float64), name = "Bias_h2")
+    W_o = tf.Variable(tf.random_uniform(shape = [dimension, dimension], minval = -0.1, maxval = 0.1, dtype = tf.float64), name = "W_o")
     Bias_o = tf.Variable(tf.zeros(shape = [1], dtype = tf.float64), name = "Bias_o")
 
-    pred = tf.add(tf.matmul(X, W_o), Bias_o)
-    cost = tf.reduce_mean(tf.sqrt(tf.square(tf.subtract(pred, Y))))
-    optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(cost)
+    l = tf.tanh(tf.add(tf.matmul(X, W_h1), Bias_h1))
+    l = tf.tanh(tf.add(tf.matmul(l, W_h2), Bias_h2))
+    l = tf.add(tf.matmul(l, W_o), Bias_o)
+
+    pred = l
+    cost = tf.sqrt(tf.reduce_mean(tf.square(tf.subtract(pred, Y))))
+    optimizer = tf.train.AdamOptimizer(learning_rate).minimize(cost)
 
     init = tf.global_variables_initializer()
 
@@ -170,7 +158,8 @@ def train(tr_X, tr_Y, te_X, te_Y):
             # Display logs per epoch step
             if (epoch + 1) % display_step == 0:
                 c = sess.run(cost, feed_dict={X: train_X, Y: train_Y})
-                print("Epoch:", '%04d' % (epoch + 1), "RMSE=", "{:.9f}".format(c), "Bias_o=", sess.run(Bias_o))
+                print("Epoch:", '%04d' % (epoch + 1), "Training RMSE=", "{:.9f}".format(c), "Bias_o=", sess.run(Bias_o))
+                #print("W_o=", sess.run(W_o))
 
         print("Optimization Finished!")
         training_cost = sess.run(cost, feed_dict={X: train_X, Y: train_Y})
