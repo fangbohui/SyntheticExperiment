@@ -5,31 +5,33 @@ import pylab as pl
 import random
 import time
 import os
-rng = np.random
 
 tag = '' + time.strftime('%m-%d-%H:%M:%S', time.localtime(time.time()))
 logdir = 'log/' + tag
-print (logdir)
+os.system("mkdir " + logdir)
+print ("dir = ", logdir)
+
 train_size = 1000
 test_size = 300
 field_number = 100
 field = np.random.random_integers(1, 20, field_number)
+dimension = field.sum()
+
 print("field:")
 print(field)
-dimension = field.sum()
 print("dimension = ", dimension)
-# dimension = 30
-# field_number = 5
-# field = np.array([2, 4, 5, 7, 12])
-# field_number = 3
-# field = np.array([2, 2, 2])
-# field_number = 2
-# field = np.array([2, 2])
+config_parameter = open(logdir + "/config.txt", 'w', buffering = -1)
+config_parameter.write("train_size = %d\n" % train_size)
+config_parameter.write("tets_size = %d\n" % test_size)
+config_parameter.write("dimension = %d\n" % dimension)
+config_parameter.write("field_number = %d\n" % field_number)
+config_parameter.write("fields = [")
+for i in range(field_number):
+    config_parameter.write("%d, " % field[i])
+config_parameter.write("]\n")
 
 
 def make_parameters():
-    print (logdir)
-    os.system("mkdir " + logdir)
     file_parameter = open(logdir + "/parameter.txt", 'w', buffering = -1)
     # generate the probabilies
     # means the random_bound
@@ -146,9 +148,14 @@ def get_variable(init_type='tnormal', shape=None, name=None, minval=-0.1, maxval
 
 def train(tr_X, tr_Y, te_X, te_Y):
     learning_rate = 0.01
-    training_epochs = 100
+    training_epochs = 10000
     display_step = 10
     net_size = 128
+    config_parameter.write("learning_rate = %.5f\n" % learning_rate)
+    config_parameter.write("training epochs = %d\n" % training_epochs)
+    config_parameter.write("display_step = %d\n" % display_step)
+    config_parameter.write("net_size = %d\n" % net_size)
+    config_parameter.write("layer_number = 2\n")
 
     train_X = np.asarray(tr_X).reshape(train_size, dimension)
     train_Y = np.asarray(tr_Y).reshape(train_size, 1)
@@ -226,7 +233,6 @@ def train(tr_X, tr_Y, te_X, te_Y):
     pl.ylabel("AUC")
     pl.savefig(logdir + "/curve.png")
     pl.show()
-
 
 
 make_parameters()
