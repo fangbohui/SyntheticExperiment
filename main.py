@@ -175,10 +175,6 @@ def train():
     config_parameter.write("layer_number = 2\n")
 
     # train_X = np.asarray(tr_X).reshape(train_size, dimension)
-    train_x_indices = tf.placeholder("int", [train_size, field_number])
-    test_x_indices = tf.placeholder("int", [test_size, field_number])
-
-
     tr_X = tf.placeholder("float64", [train_size, 2])
     tr_Y = tf.placeholder("float64", [train_size, 1])
     te_X = tf.placeholder("float64", [test_size, 2])
@@ -192,6 +188,7 @@ def train():
     # X = tf.placeholder("float64", [None, dimension])
     # Y = tf.placeholder("float64", [None, 1])
     X = tf.sparse_placeholder("float64", [None, dimension])
+    # X = tf.placeholder("int32", [None, field_number])
     Y = tf.placeholder("float64", [None, 1])
 
     W_h = []
@@ -202,6 +199,7 @@ def train():
         Bias_h.append(get_variable('zero', [network[i]], "Bias_h" + str(i)))
     for i in range(network.size - 1):
         if (i == 0):
+            # W_h[0] = tf.gather(W_h[0], train_x_indices)
             l.append(tf.nn.tanh(tf.add(tf.sparse_tensor_dense_matmul(X, W_h[0]), Bias_h[0])))
         else:
             l.append(tf.nn.tanh(tf.add(tf.matmul(l[i - 1], W_h[i]), Bias_h[i])))
