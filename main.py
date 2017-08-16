@@ -14,14 +14,14 @@ print("dir = ", logdir)
 
 train_size = 1000
 test_size = 300
-field_number = 35
+field_number = 40
 y_scale = 10000
-field = np.random.random_integers(1, 40, field_number)
+field = np.random.random_integers(1, 50, field_number)
 dimension = field.sum()
 network = np.array([dimension, 128, 128, 1])
 
 learning_rate = 0.1
-training_epochs = 1000
+training_epochs = 1200
 display_step = 10
 
 print("field:")
