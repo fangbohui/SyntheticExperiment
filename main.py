@@ -15,13 +15,16 @@ print("dir = ", logdir)
 train_size = 1000
 test_size = 300
 field_number = 40
-y_scale = 10000
-field = np.random.random_integers(1, 50, field_number)
+y_scale = 0
+W_ratio = 0.5
+V_ratio = 0.5
+field_size = 10
+field = np.random.random_integers(1, field_size * 2, field_number)
 dimension = field.sum()
-network = np.array([dimension, 128, 128, 1])
+network = np.array([dimension, 128, 128, 128, 1])
 
 learning_rate = 0.1
-training_epochs = 1200
+training_epochs = 1000
 display_step = 10
 
 print("field:")
@@ -31,6 +34,7 @@ config_parameter = open(logdir + "/config.txt", 'w', buffering = -1)
 config_parameter.write("train_size = %d\n" % train_size)
 config_parameter.write("tets_size = %d\n" % test_size)
 config_parameter.write("dimension = %d\n" % dimension)
+config_parameter.write("field size = %d\n" % field_size)
 config_parameter.write("y distribution_scale = %.5f\n" % y_scale)
 config_parameter.write("field_number = %d\n" % field_number)
 config_parameter.write("fields = [")
@@ -50,12 +54,15 @@ def make_parameters():
         file_parameter.write("%.6f\n" % (random.random()))
     file_parameter.write("W-dimension = %d\n" % dimension)
     for i in range(dimension):
-        file_parameter.write("0.0\n")
+        file_parameter.write("%.6f\n" % ((random.random() - 0.5) / 3 * (10. / field_size)))
+        # file_parameter.write("0.0\n")
     file_parameter.write("V-dimension = %d\n" % dimension)
     V = np.zeros([dimension, dimension])
     for i in range(dimension):
         for j in range(dimension):
-            V[i][j] = (random.random() - 0.5) * 1000
+            V[i][j] = (random.random() - 0.5) / 18 * (10. / field_size)
+            if (i == j):
+                V[i][j] = 0
             file_parameter.write("%.6f\n" % V[i][j])
     file_parameter.close()
     print ("the stddev of V-distribution is %.5f" % np.std(V))
@@ -101,10 +108,12 @@ def get_parameters():
 
     p = np.expand_dims(x, 2)
     q = np.expand_dims(x, 1)
-    y = x.dot(W) + (p * q).reshape([-1, dimension**2]).dot(V.flatten())
+    y = x.dot(W) * 2 * W_ratio + (p * q).reshape([-1, dimension**2]).dot(V.flatten())  * 2 * V_ratio
     print ("y-std = %.5f" % np.std(y))
     for i in range(train_size):
         y[i] = np.random.normal(loc=y[i], scale=y_scale, size=None)
+        # if (y[i] < 0):
+        #     y[i] = - y[i]
     sum = 0.0
     for i in range(train_size):
         sum += y[i]
@@ -129,7 +138,7 @@ def sampling(size):
 
     p = np.expand_dims(x, 2)
     q = np.expand_dims(x, 1)
-    y = x.dot(W) + (p * q).reshape([-1, dimension**2]).dot(V.flatten())
+    y = x.dot(W) * 2 * W_ratio + (p * q).reshape([-1, dimension**2]).dot(V.flatten()) * 2 * V_ratio
     for i in range(size):
         y[i] = np.random.normal(loc=y[i], scale=y_scale, size=None)
     for i in range(size):
@@ -243,15 +252,17 @@ def train():
                 break
         avg_auc /= cnt
         config_parameter.write("AUC-AVG = %.9f\n" % avg_auc)
-        config_parameter.close()
 
     print (epoch_vector)
     print (AUC_vector)
+    for i in AUC_vector:
+        config_parameter.write("%.9f\n" % i)
     auc_curve.plot(epoch_vector, AUC_vector)
     auc_curve.xlabel("epoch")
     auc_curve.ylabel("AUC")
     auc_curve.savefig(logdir + "/AUC-curve.png")
     auc_curve.show()
+    config_parameter.close()
 
 
 make_parameters()
